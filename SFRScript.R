@@ -33,7 +33,7 @@ for (i in 1:(length(temp)) ) {
 		names(data[[temp[i]]]) <- b
 		
 		isTimeSeries <- try(as.Date(names(data[[temp[i]]])), silent = TRUE)
-		if (length(isTimeSeries) < 1) {
+		if (length(isTimeSeries) != 1) {
 			names(data[[temp[i]]]) <- as.Date(names(data[[temp[i]]]))
 		}
 	}
@@ -46,24 +46,36 @@ for (i in 1:(length(temp)) ) {
 
 writeToFile <- function ( list ) {
 	for (i in 1:length(list)) {
-		write.csv(list[[i]], paste(names(list[i]), "Cleaned", sep=""))
+		write.csv(list[[i]], paste(names(list[i]), "Cleaned.csv", sep=""))
 	}
 }
 
-
+averageOverPastXMonths <- function ( list, x, na.rm = TRUE ) {
+	summary <- vector()
+	for (i in 1:length(list)) {
+		#Only catches time series
+		isTimeSeries <- try(as.Date(names(list[[i]])), silent = TRUE)
+		
+		if (length(isTimeSeries) != 1) {
+			
+			#Gets average of last twelve months
+			lengthOfSet <- length(names(list[[i]]))
+			col <- list[[i]][,(lengthOfSet-x):lengthOfSet]
+			col <- rowMeans(col, na.rm=na.rm)
+			
+			#Merges into a summary doc
+			summary <- merge(summary, col, by = 'row.names', all = TRUE)
+			row.names(summary) <- summary$Row.names
+			summary <- summary[,-1]
+			
+			#Renames variable name of the data set from which we took average
+			names(summary)[length(summary)] <- names(list[i])
+		}
+	}
+	
+	return(summary)
+}
 ###############################################################
 writeToFile(data)
-
-#For loading into csvs
-
-
-names(test) <- gsub("Neighborhood_HomesSoldAsForeclosures-Ratio_AllHomes", "", names(test))
-
-write.csv(fullNabeData, file="fullDataSet.csv", sep=",")
-
-# Export big CSV file
-nonDrops <- c("2014.11", "2014.12", "2015.01","2015.02","2015.03","2015.04")
-
-#Get a master data set that's only the last year
-
-#Change top date into Date objects. Make rownames the neighborhoods. Four pomodoros. Then work on app.
+summary <- averageOverPastMonths(data, 12)
+write.csv(summary, "TimeSeriesSummary.csv")
